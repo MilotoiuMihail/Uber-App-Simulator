@@ -6,6 +6,8 @@ window.onload = function () {
     function onLocationAccess(position) {
         let mapElement = document.getElementById('map');
 
+        let currentMarker = null
+
         let verticalBound = mapElement.offsetHeight * .5;
         let bounds = L.latLngBounds(L.latLng(-verticalBound, 300), L.latLng(verticalBound, -300));
 
@@ -19,5 +21,11 @@ window.onload = function () {
             maxZoom: 20,
             attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
         }).addTo(map)
+
+        map.addEventListener('click', (e) => {
+            if (currentMarker)
+                currentMarker.removeFrom(map)
+            currentMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map)
+        })
     }
 }
