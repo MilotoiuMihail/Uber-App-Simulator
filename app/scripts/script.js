@@ -1,16 +1,22 @@
 window.onload = function () {
     let mapElement = document.getElementById('map')
-    let btnAllow = document.getElementById('btnAllow')
+    let btnPosition = document.getElementById('btnPosition')
     let btnSet = document.getElementById('btnSet')
     let title = document.getElementById('title')
     let pickupElement = document.getElementById('pickup')
     let destinationElement = document.getElementById('destination')
+    let resultList = document.getElementById('results')
+
     let currentMarker = null
     let map = null
+    let geocoder = L.Control.Geocoder.nominatim()
     let canSet = false
+    let currentPosition = null
+    let searchBounds = null
     //coordinates for Uber HQ
     const defaultLat = 37.7749
     const defaultLng = -122.4194
+
 
     //functions
     async function init() {
@@ -18,18 +24,18 @@ window.onload = function () {
         switch (permissionStatus.state) {
             case "granted":
                 navigator.geolocation.getCurrentPosition((position) => {
-                    lat = position.coords.latitude
-                    lng = position.coords.longitude
-                    initMap(lat, lng)
+                    onLocationAccess(position)
+                    initMap(position.coords.latitude, position.coords.longitude)
                 })
                 break;
             case "denied":
-                btnAllow.remove()
+                btnPosition.remove()
             default:
                 initMap(defaultLat, defaultLng)
                 break;
         }
     }
+
 
     function getPermission() {
         return navigator.permissions.query({ name: 'geolocation' }).then(function (permissionStatus) {
@@ -39,10 +45,10 @@ window.onload = function () {
 
     function initMap(lat, lng) {
         let verticalBound = mapElement.offsetHeight * .5;
-        let bounds = L.latLngBounds(L.latLng(-verticalBound, 300), L.latLng(verticalBound, -300));
+        let viewBounds = L.latLngBounds(L.latLng(-verticalBound, 300), L.latLng(verticalBound, -300));
         map = L.map('map', {
             zoom: 10,
-            maxBounds: bounds,
+            maxBounds: viewBounds,
             worldCopyJump: true
         }).setView([lat, lng], 13)
 
@@ -63,16 +69,26 @@ window.onload = function () {
     }
 
     function onLocationAccess(position) {
-        console.log(position)
-        map.setView([position.coords.latitude, position.coords.longitude], 17)
+        currentPosition = position
+        let radius = 100000
+        setSearchBounds(position.coords.latitude, position.coords.longitude, radius)
+        geocoder.options.geocodingQueryParams = {
+            viewbox: searchBounds.toBBoxString(),
+            bounded: 1
+        }
     }
 
+    function setSearchBounds(lat, lng, radius) {
+        let center = L.latLng(lat, lng)
+        searchBounds = center.toBounds(radius)
+    }
     //code
     init()
 
-    btnAllow.addEventListener('click', () => {
+    btnPosition.addEventListener('click', () => {
         navigator.geolocation.getCurrentPosition((position) => {
             onLocationAccess(position)
+            map.setView([position.coords.latitude, position.coords.longitude], 17)
         })
     })
 
@@ -88,8 +104,17 @@ window.onload = function () {
         title.textContent = 'Where to?'
     })
 
-    pickupElement.addEventListener('keypress', () => {
+    pickupElement.addEventListener('keyup', (e) => {
+        resultList.innerHTML = ''
+        let search = pickupElement.value
 
+        geocoder.geocode(search, (results) => {
+            results.forEach(result => {
+                let item = document.createElement('li')
+                item.textContent = result.name
+                resultList.appendChild(item)
+            })
+        })
     })
 
 

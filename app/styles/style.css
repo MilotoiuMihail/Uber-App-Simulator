@@ -23,3 +23,13 @@ body {
     font-size: 30px;
     line-height: 30px;
 }
+
+.inputForm {
+    position: absolute;
+    border-radius: 10px;
+    top: 100px;
+    left: 100px;
+    width: 20vw;
+    height: 60vh;
+    z-index: 1001;
+}
