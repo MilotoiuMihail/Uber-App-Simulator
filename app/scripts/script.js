@@ -105,17 +105,33 @@ window.onload = function () {
     })
 
     pickupElement.addEventListener('keyup', (e) => {
-        resultList.innerHTML = ''
+        for (let i = 2; i < resultList.children.length; i++) {
+            resultList.removeChild(resultList.children[i]);
+        }
         let search = pickupElement.value
 
         geocoder.geocode(search, (results) => {
             results.forEach(result => {
-                let item = document.createElement('li')
-                item.textContent = result.name
+                let item = document.createElement("div")
+                item.classList.add("resultItem");
+                if (result.icon) {
+                    let img = document.createElement("img");
+                    img.classList.add("icon");
+                    img.src = result.icon;
+                    item.appendChild(img);
+                }
+                let text = document.createTextNode(result.name);
+                item.appendChild(text);
+                item.addEventListener('click', (e) => {
+                    //??
+                    if (title.textContent === "Where can we pick you up?")
+                        pickupElement.value = result.name
+                    else
+                        destinationElement.value = result.name
+                })
                 resultList.appendChild(item)
             })
         })
     })
-
 
 }
