@@ -24,7 +24,8 @@ body {
     line-height: 30px;
 }
 
-.inputForm {
+#menu {
+    background-color: white;
     position: absolute;
     border-radius: 10px;
     top: 100px;
@@ -72,4 +73,33 @@ body {
     background-color: #f2f2f2;
     box-shadow: none;
     transition: none;
+}
+
+.hidden {
+    display: none;
+}
+
+.button {
+    display: flex;
+    flex-direction: row;
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+#btnConfirm {
+    background-color: black;
+    color: white
+}
+
+#btnConfirm:hover {
+    background-color: #333333;
+}
+
+#btnCancel {
+    background-color: #eeeeee;
+    color: black
+}
+
+#btnCancel:hover {
+    background-color: #e2e2e2;
 }

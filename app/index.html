@@ -32,24 +32,28 @@
             <a class="navbar-brand" href="#">Uber</a>
         </div>
     </nav>
-    <div class="container bg-white inputForm">
+    <div class="container" id="menu">
         <h2 id="title">Where can we pick you up?</h2>
         <form>
-            <div class="form-group">
+            <div class="form-group" id="inputContainer">
                 <input type="text" class="form-control searchField" id="pickup" placeholder="Add a pickup location">
                 <input type="text" class="form-control searchField mt-2" id="destination"
                     placeholder="Enter your destination">
             </div>
         </form>
+        <div class="resultItem" id="btnPosition">
+            <img class="icon" src="">
+            Allow location access
+        </div>
+        <div class="resultItem" id="btnSet">
+            <img class="icon" src="">
+            <p>Set location on map</p>
+        </div>
         <div class="resultList mt-2" id="results">
-            <div class="resultItem" id="btnPosition">
-                <img class="icon" src="">
-                Allow location access
-            </div>
-            <div class="resultItem" id="btnSet">
-                <img class="icon" src="">
-                Set location on map
-            </div>
+        </div>
+        <div class="container hidden" id="buttonContainer">
+            <div class="button" id="btnConfirm">Confirm</div>
+            <div class="button" id="btnCancel">Cancel</div>
         </div>
     </div>
     </div>
