@@ -1,0 +1,17 @@
+[
+    {
+        "icon": "",
+        "name": "UberX",
+        "multiplier": 1
+    },
+    {
+        "icon": "",
+        "name": "Green",
+        "multiplier": 1.2
+    },
+    {
+        "icon": "",
+        "name": "Premium",
+        "multiplier": 1.5
+    }
+]

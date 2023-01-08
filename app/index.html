@@ -23,7 +23,7 @@
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <link href="./styles/style.css" rel="stylesheet" type="text/css">
-    <script type="text/javascript" src="./scripts/script.js"></script>
+    <script type="module" src="./scripts/script.js"></script>
 </head>
 
 <body>
@@ -34,6 +34,7 @@
     </nav>
     <div class="container" id="menu">
         <h2 id="title">Where can we pick you up?</h2>
+        <p class="hidden" id="description"></p>
         <form>
             <div class="form-group" id="inputContainer">
                 <input type="text" class="form-control searchField" id="pickup" placeholder="Add a pickup location">
@@ -41,17 +42,20 @@
                     placeholder="Enter your destination">
             </div>
         </form>
-        <div class="resultItem" id="btnPosition">
-            <img class="icon" src="">
-            Allow location access
-        </div>
-        <div class="resultItem" id="btnSet">
-            <img class="icon" src="">
-            <p>Set location on map</p>
+        <div class="container" id="locationBtns">
+            <div class="resultItem" id="btnPosition">
+                <img class="icon" src="">
+                Allow location access
+            </div>
+            <div class="resultItem" id="btnSet">
+                <img class="icon" src="">
+                <p>Set location on map</p>
+            </div>
         </div>
         <div class="resultList mt-2" id="results">
         </div>
-        <div class="container hidden" id="buttonContainer">
+        <div class="button hidden" id="btnRequest">Request</div>
+        <div class="container hidden" id="confirmBtns">
             <div class="button" id="btnConfirm">Confirm</div>
             <div class="button" id="btnCancel">Cancel</div>
         </div>

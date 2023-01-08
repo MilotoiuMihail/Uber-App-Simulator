@@ -47,6 +47,7 @@ body {
 
 .resultItem {
     display: flex;
+    border-radius: 8px;
     align-items: center;
     cursor: pointer;
     padding: 8px;
@@ -54,6 +55,10 @@ body {
 
 .resultItem:hover {
     background-color: #f8f8f8;
+}
+
+.ride:focus {
+    border: 2px solid #333333;
 }
 
 .icon {
@@ -75,23 +80,21 @@ body {
     transition: none;
 }
 
-.hidden {
+.hidden,
+.button.hidden {
     display: none;
 }
 
 .button {
     display: flex;
+    background-color: black;
+    color: white;
     flex-direction: row;
     border-radius: 8px;
     padding: 14px 16px;
 }
 
-#btnConfirm {
-    background-color: black;
-    color: white
-}
-
-#btnConfirm:hover {
+.button:hover {
     background-color: #333333;
 }
 

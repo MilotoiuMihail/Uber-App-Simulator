@@ -1,0 +1,82 @@
+[
+    {
+        "icon": "https://example.com/driver1.png",
+        "name": "John Smith",
+        "car": {
+            "plate": "B 278 ACR",
+            "color": "red",
+            "brand": "Ford"
+        },
+        "rating": 4.75
+    },
+    {
+        "icon": "https://example.com/driver2.png",
+        "name": "Jane Doe",
+        "car": {
+            "plate": "B 102 ROL",
+            "color": "blue",
+            "brand": "Toyota"
+        },
+        "rating": 3.5
+    },
+    {
+        "icon": "https://example.com/driver3.png",
+        "name": "Bob Johnson",
+        "car": {
+            "plate": "B 152 MTC",
+            "color": "green",
+            "brand": "Honda"
+        },
+        "rating": 5.0
+    },
+    {
+        "icon": "https://example.com/driver4.png",
+        "name": "Mike Williams",
+        "car": {
+            "plate": "B 210 SPT",
+            "color": "black",
+            "brand": "Chevrolet"
+        },
+        "rating": 4.0
+    },
+    {
+        "icon": "https://example.com/driver5.png",
+        "name": "Sarah Davis",
+        "car": {
+            "plate": "B 256 JKL",
+            "color": "silver",
+            "brand": "Nissan"
+        },
+        "rating": 3.75
+    },
+    {
+        "icon": "https://example.com/driver6.png",
+        "name": "Steve Brown",
+        "car": {
+            "plate": "B 345 DEF",
+            "color": "orange",
+            "brand": "Mazda"
+        },
+        "rating": 4.5
+    },
+    {
+        "icon": "https://example.com/driver7.png",
+        "name": "Emily Johnson",
+        "car": {
+            "plate": "B 432 GHI",
+            "color": "yellow",
+            "brand": "Subaru"
+        },
+        "rating": 2.5
+    },
+    {
+        "icon": "https://example.com/driver8.png",
+        "name": "Tom Smith",
+        "car": {
+            "plate": "B 999 ZYX",
+            "color": "white",
+            "brand": "Jeep"
+        },
+        "rating": 4.25
+    }
+]

@@ -1,17 +1,24 @@
+import rides from '../resources/data/rides.json' assert {type: 'json'}
+import drivers from '../resources/data/drivers.json' assert {type: 'json'}
+
+
+
 window.onload = function () {
-    const mapElement = document.getElementById('map')
+    const title = document.getElementById('title')
+    const description = document.getElementById('description')
+    const inputContainer = document.getElementById('inputContainer')
+    const locationBtns = document.getElementById('locationBtns')
     const btnPosition = document.getElementById('btnPosition')
     const btnSet = document.getElementById('btnSet')
-    const title = document.getElementById('title')
     const resultList = document.getElementById('results')
-    const buttonContainer = document.getElementById('buttonContainer')
+    const confirmBtns = document.getElementById('confirmBtns')
+    const btnRequest = document.getElementById('btnRequest')
     const btnConfirm = document.getElementById('btnConfirm')
     const btnCancel = document.getElementById('btnCancel')
-    const inputContainer = document.getElementById('inputContainer')
+    const mapElement = document.getElementById('map')
     let map = null
     let geocoder = null
     let lastInput = null
-    let route = null
 
     const pickup = {
         element: document.getElementById('pickup'),
@@ -31,7 +38,16 @@ window.onload = function () {
     }
 
     const user = {
-        marker: null
+        marker: null,
+        order: {
+            route: null,
+            rideType: null,
+            price: null
+        }
+    }
+
+    const currentDriver = {
+        route: null
     }
 
     //coordinates for Uber HQ
@@ -69,7 +85,6 @@ window.onload = function () {
     }
 
     function initMap() {
-        //map bounds to avoid gray margins
         const verticalBound = mapElement.offsetHeight * .5;
         const viewBounds = L.latLngBounds(L.latLng(-verticalBound, 300), L.latLng(verticalBound, -300));
 
@@ -159,13 +174,13 @@ window.onload = function () {
     }
 
     function setRoute(waypoints) {
-        if (route) {
-            route.setWaypoints(waypoints)
-            if (!map.hasLayer(route))
-                route.addTo(map)
+        if (user.order.route) {
+            user.order.route.setWaypoints(waypoints)
+            if (!map.hasLayer(user.order.route))
+                user.order.route.addTo(map)
         }
         else
-            route = L.Routing.control({
+            user.order.route = L.Routing.control({
                 waypoints: waypoints,
                 draggableWaypoints: false,
                 routeWhileDragging: false,
@@ -178,11 +193,68 @@ window.onload = function () {
     }
 
     function isReady() {
-        if (pickup.location && destination.location) {
-            //display ubers
-            resultList.innerHTML = 'Fotbal'
-            setRoute([pickup.location.center, destination.location.center])
-        }
+        if (!pickup.location || !destination.location) return
+        setRoute([pickup.location.center, destination.location.center])
+        user.order.route.on('routeselected', () => {
+            resultList.innerHTML = ''
+            const price = computePrice()
+            rides.forEach(ride => {
+                const item = createResult(ride)
+                const text = document.createTextNode((price * ride.multiplier).toFixed(2) + ' ron');
+                item.appendChild(text)
+                resultList.appendChild(item)
+                item.classList.add('ride')
+                item.addEventListener('click', () => {
+                    user.order.type = ride.name
+                    user.order.price = price * ride.multiplier
+                })
+            })
+        })
+        title.textContent = 'Choose a ride'
+        toRequestView()
+    }
+
+    function computePrice() {
+        if (!user.order.route) return
+        const kmPrice = Math.random() * (5 - 3) + 3
+        const basePrice = 10
+        return user.order.route._selectedRoute.summary.totalDistance * .001 * kmPrice + basePrice
+    }
+
+    function toSetView() {
+        description.classList.remove('hidden')
+        inputContainer.classList.add('hidden')
+        locationBtns.classList.add('hidden')
+        confirmBtns.classList.remove('hidden')
+    }
+
+    function toMainView() {
+        description.classList.add('hidden')
+        inputContainer.classList.remove('hidden')
+        locationBtns.classList.remove('hidden')
+        confirmBtns.classList.add('hidden')
+        btnRequest.classList.add('hidden')
+    }
+
+    function toRequestView() {
+        locationBtns.classList.add('hidden')
+        btnRequest.classList.remove('hidden')
+    }
+
+    function toPickupView() {
+        btnPosition.classList.remove('hidden')
+    }
+
+    function toDestinationView() {
+        btnPosition.classList.add('hidden')
+    }
+
+    function randomLocation(center) {
+        const radius = 2000
+        const bounds = center.toBounds(radius)
+        const randomLat = bounds.getSouthWest().lat + Math.random() * (bounds.getNorthEast().lat - bounds.getSouthWest().lat);
+        const randomLng = bounds.getSouthWest().lng + Math.random() * (bounds.getNorthEast().lng - bounds.getSouthWest().lng);
+        return [randomLat, randomLng]
     }
 
     const inputSearch = (input) => {
@@ -209,9 +281,8 @@ window.onload = function () {
         if (!setPoint.canSet) return
         setMarker(setPoint, [e.latlng.lat, e.latlng.lng])
         const result = await reverseSearch(setPoint.marker._latlng)
-        //schimba textul butonului de set cu numele locatiei
         if (!result) return
-        btnSet.textContent = result.name
+        description.textContent = result.name
     })
 
     btnPosition.addEventListener('click', () => {
@@ -219,8 +290,8 @@ window.onload = function () {
             onLocationAccess(position)
             const result = await reverseSearch(user.marker._latlng)
             if (!result) return
+            removeMarker(user.marker)
             setLocation(pickup, result)
-            removeMarker(pickup.marker)
             //schimba textul butonului de position cu numele locatiei 
             btnPosition.textContent = result.name
         })
@@ -228,49 +299,58 @@ window.onload = function () {
 
     btnSet.addEventListener('click', () => {
         setPoint.canSet = true
+        setPoint.marker = null
         resultList.innerHTML = ''
-        title.textContent = 'Choose your pickup location'
-        buttonContainer.classList.remove('hidden')
-        inputContainer.classList.add('hidden')
-        btnPosition.classList.add('hidden')
+        const setTitle = lastInput === pickup ? 'Choose your pickup location' : 'Set your destination'
+        title.textContent = setTitle
+        toSetView()
     })
 
     btnCancel.addEventListener('click', () => {
         setPoint.canSet = false
         removeMarker(setPoint.marker)
-        buttonContainer.classList.add('hidden')
-        inputContainer.classList.remove('hidden')
         lastInput.element.focus()
-        //resetezi textul de pe butonul de set
-        btnSet.textContent = 'Set location on map'
+        description.textContent = ''
+        toMainView()
     })
 
     btnConfirm.addEventListener('click', async () => {
         setPoint.canSet = false
         removeMarker(setPoint.marker)
-        buttonContainer.classList.add('hidden')
+        description.textContent = ''
+        toMainView()
         if (setPoint.marker) {
             const result = await reverseSearch(setPoint.marker._latlng)
             if (result)
                 setLocation(lastInput, result)
         }
-        inputContainer.classList.remove('hidden')
-        //resetezi textul de pe butonul de set
-        btnSet.textContent = 'Set location on map'
+    })
+
+    btnRequest.addEventListener('click', () => {
+        if (!user.order.type) return
+        title.textContent = 'Waiting for a driver'
+        resultList.innerHTML = ''
+        btnRequest.classList.add('hidden')
+        drivers.forEach(driver => {
+            driver.location = randomLocation(pickup.location.center)
+            let marker = L.marker(driver.location).addTo(map);
+        })
     })
 
     pickup.element.addEventListener('focus', () => {
         lastInput = pickup
-        btnPosition.classList.remove('hidden')
         title.textContent = 'Where can we pick you up?'
         inputSearch(pickup)
+        toMainView()
+        toPickupView()
     })
 
     destination.element.addEventListener('focus', () => {
         lastInput = destination
-        btnPosition.classList.add('hidden')
         title.textContent = 'Where to?'
         inputSearch(destination)
+        toMainView()
+        toDestinationView()
     })
 
     pickup.element.addEventListener('keyup', () => {
