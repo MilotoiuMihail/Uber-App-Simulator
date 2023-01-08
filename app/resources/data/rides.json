@@ -1,16 +1,16 @@
 [
     {
-        "icon": "",
+        "icon": "resources/icons/rides/uberX.png",
         "name": "UberX",
         "multiplier": 1
     },
     {
-        "icon": "",
+        "icon": "resources/icons/rides/green.png",
         "name": "Green",
         "multiplier": 1.2
     },
     {
-        "icon": "",
+        "icon": "resources/icons/rides/premium.png",
         "name": "Premium",
         "multiplier": 1.5
     }

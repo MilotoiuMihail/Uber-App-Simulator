@@ -19,35 +19,37 @@ window.onload = function () {
     let map = null
     let geocoder = null
     let lastInput = null
+    let carIcon = null
+    let driverRoute = null
 
     const pickup = {
         element: document.getElementById('pickup'),
         marker: null,
-        location: null
+        location: null,
+        icon: null
     }
 
     const destination = {
         element: document.getElementById('destination'),
         marker: null,
-        location: null
+        location: null,
+        icon: null
     }
 
     const setPoint = {
         marker: null,
-        canSet: false
+        canSet: false,
+        icon: null
     }
 
     const user = {
         marker: null,
+        icon: null,
         order: {
             route: null,
             rideType: null,
             price: null
         }
-    }
-
-    const currentDriver = {
-        route: null
     }
 
     //coordinates for Uber HQ
@@ -60,14 +62,15 @@ window.onload = function () {
         initMap()
         geocoder = L.Control.Geocoder.nominatim()
         const permissionStatus = await getPermission()
+        setMarkerIcons()
         switch (permissionStatus.state) {
             case "granted":
                 navigator.geolocation.getCurrentPosition(async (position) => {
                     onLocationAccess(position)
+                    spawnDrivers(L.latLng(position.coords.latitude, position.coords.longitude))
                     const result = await reverseSearch(user.marker._latlng)
                     if (result)
-                        //schimba textul butonului de position cu numele locatiei 
-                        btnPosition.textContent = result.name
+                        btnPosition.replaceChildren(createAddressResult(result));
                 })
                 break;
             case "denied":
@@ -137,7 +140,8 @@ window.onload = function () {
                 input.marker.addTo(map)
         }
         else
-            input.marker = L.marker(center).addTo(map)
+            input.marker = L.marker(center, { icon: input.icon })
+                .addTo(map)
     }
     function removeMarker(marker) {
         if (marker)
@@ -148,10 +152,30 @@ window.onload = function () {
         input.element.value = location.name
         input.location = location
         setMarker(input, location.center)
+        input.marker.bindTooltip(location.name, {
+            permanent: true,
+            direction: 'right'
+        })
         isReady()
     }
 
-    function createResult(result) {
+    function getMarkerIcon(fileName, size) {
+        return L.icon({
+            iconUrl: `resources/icons/markers/${fileName}.png`,
+            iconSize: [size, size],
+            iconAnchor: [20, 20]
+        })
+    }
+
+    function setMarkerIcons() {
+        user.icon = getMarkerIcon('current', 16)
+        destination.icon = getMarkerIcon('destination', 16)
+        setPoint.icon = getMarkerIcon('marker', 32)
+        pickup.icon = getMarkerIcon('pickup', 16)
+        carIcon = getMarkerIcon('car', 32)
+    }
+
+    function createAddressResult(result) {
         const item = document.createElement("div")
         item.classList.add("resultItem");
         if (result.icon) {
@@ -160,9 +184,49 @@ window.onload = function () {
             img.src = result.icon;
             item.appendChild(img);
         }
-        const text = document.createTextNode(result.name);
-        item.appendChild(text);
-        return item
+
+        let addressContainer = parseAddressString(result.name);
+        item.appendChild(addressContainer);
+
+        return item;
+    }
+
+    function parseAddressString(addressItemsString) {
+        let addressContainer = document.createElement('div');
+        addressContainer.classList.add('address-container');
+
+        let words = addressItemsString.toString().split(',');
+
+        let streetAndName = words.splice(0, 2).reduce((words, word, ind) => (`${words}${ind != 0 ? "," : ""}${word}`), "");
+        const address = document.createElement('p');
+        address.classList.add("address");
+        address.innerHTML = streetAndName;
+        addressContainer.appendChild(address);
+
+        //words[0] = words[0].slice(1); //remove the space in front of the first word
+        let cityAndDistrict = words.splice(0, 2).reduce((words, word, ind) => (`${words}${ind != 0 ? "," : ""}${word}`), "");
+        const city = document.createElement('p');
+        city.classList.add("city");
+        city.innerHTML = cityAndDistrict;
+        addressContainer.appendChild(city);
+
+        return addressContainer;
+    }
+
+    function createRideResult(result) {
+        const item = document.createElement("div")
+        item.classList.add("resultItem");
+        if (result.icon) {
+            const img = document.createElement("img");
+            img.classList.add("icon");
+            img.src = result.icon;
+            item.appendChild(img);
+        }
+        const car = document.createElement('div');
+        car.classList.add('car-name');
+        car.innerHTML = result.name;
+        item.appendChild(car);
+        return item;
     }
 
     async function reverseSearch(center) {
@@ -173,41 +237,48 @@ window.onload = function () {
         })
     }
 
-    function setRoute(waypoints) {
-        if (user.order.route) {
-            user.order.route.setWaypoints(waypoints)
-            if (!map.hasLayer(user.order.route))
-                user.order.route.addTo(map)
-        }
-        else
-            user.order.route = L.Routing.control({
-                waypoints: waypoints,
-                draggableWaypoints: false,
-                routeWhileDragging: false,
-                addWaypoints: false,
-                show: false,
-                lineOptions: {
-                    styles: [{ color: 'black' }]
-                }
-            }).addTo(map)
+    async function setRoute(waypoints) {
+        return await new Promise(resolve => {
+
+            if (user.order.route) {
+                user.order.route.setWaypoints(waypoints)
+                if (!map.hasLayer(user.order.route))
+                    user.order.route.addTo(map)
+                resolve()
+            }
+            else {
+                user.order.route = L.Routing.control({
+                    waypoints: waypoints,
+                    draggableWaypoints: false,
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    show: false,
+                    createMarker: () => { },
+                    lineOptions: {
+                        styles: [{ color: 'black' }]
+                    }
+                }).addTo(map).on('routeselected', () => resolve())
+            }
+        })
     }
 
-    function isReady() {
-        if (!pickup.location || !destination.location) return
-        setRoute([pickup.location.center, destination.location.center])
-        user.order.route.on('routeselected', () => {
-            resultList.innerHTML = ''
-            const price = computePrice()
-            rides.forEach(ride => {
-                const item = createResult(ride)
-                const text = document.createTextNode((price * ride.multiplier).toFixed(2) + ' ron');
-                item.appendChild(text)
-                resultList.appendChild(item)
-                item.classList.add('ride')
-                item.addEventListener('click', () => {
-                    user.order.type = ride.name
-                    user.order.price = price * ride.multiplier
-                })
+    async function isReady() {
+        if (!pickup.location || !destination.location) return;
+        await setRoute([pickup.location.center, destination.location.center])
+        resultList.innerHTML = ''
+        const price = computePrice()
+        rides.forEach(ride => {
+            const item = createRideResult(ride)
+            const text = document.createTextNode((price * ride.multiplier).toFixed(2) + ' ron');
+            item.appendChild(text)
+            resultList.appendChild(item)
+            item.classList.add('ride')
+            item.addEventListener('click', (event) => {
+                user.order.type = ride.name;
+                user.order.price = price * ride.multiplier;
+                document.querySelectorAll('.ride.selectedRide').forEach(e => e.classList.remove("selectedRide"));
+                item.classList.add("selectedRide");
+
             })
         })
         title.textContent = 'Choose a ride'
@@ -257,11 +328,18 @@ window.onload = function () {
         return [randomLat, randomLng]
     }
 
+    function spawnDrivers(center) {
+        drivers.forEach(driver => {
+            driver.location = randomLocation(center)
+            driver.marker = L.marker(driver.location, { icon: carIcon }).addTo(map);
+        })
+    }
+
     const inputSearch = (input) => {
         resultList.innerHTML = ''
         geocoder.geocode(input.element.value, results => {
             results.forEach(result => {
-                const item = createResult(result)
+                const item = createAddressResult(result)
                 item.addEventListener('click', () => {
                     input.element.blur()
                     resultList.innerHTML = ''
@@ -292,8 +370,9 @@ window.onload = function () {
             if (!result) return
             removeMarker(user.marker)
             setLocation(pickup, result)
-            //schimba textul butonului de position cu numele locatiei 
-            btnPosition.textContent = result.name
+            btnPosition.replaceChildren(createAddressResult(result));
+            if (drivers.some(driver => !driver.location))
+                spawnDrivers(pickup.location.center)
         })
     })
 
@@ -330,11 +409,54 @@ window.onload = function () {
         if (!user.order.type) return
         title.textContent = 'Waiting for a driver'
         resultList.innerHTML = ''
+        inputContainer.classList.add('hidden')
         btnRequest.classList.add('hidden')
-        drivers.forEach(driver => {
-            driver.location = randomLocation(pickup.location.center)
-            let marker = L.marker(driver.location).addTo(map);
-        })
+        description.classList.remove('hidden')
+        setTimeout(async () => {
+            title.textContent = 'Get ready'
+            const index = Math.floor(Math.random() * drivers.length)
+            const driver = drivers[index]
+            description.textContent = `${driver.name} will arrive shortly in a ${driver.car.color} ${driver.car.brand}.\n Look for ${driver.car.plate}`
+            driverRoute = L.Routing.control({
+                waypoints: [driver.location, pickup.location.center],
+                draggableWaypoints: false,
+                routeWhileDragging: false,
+                addWaypoints: false,
+                show: false,
+                createMarker: () => { },
+                lineOptions: {
+                    styles: [{ color: 'black' }]
+                }
+            }).addTo(map).on('routeselected', () => {
+                const driverItinerary = driverRoute._routes[0].coordinates
+                let i = 0;
+                setInterval(() => {
+                    if (i < driverItinerary.length) {
+                        driver.marker.setLatLng(driverItinerary[i]);
+                        i++;
+                    }
+                }, 500);
+                driver.marker.on('move', () => {
+                    let userItinerary = user.order.route._routes[0].coordinates
+                    if (driver.marker._latlng === driverItinerary[driverItinerary.length - 1]) {
+                        title.textContent = 'Have a safe ride'
+                        description.textContent = 'You will arrive shortly.'
+                        let j = 0
+                        setInterval(() => {
+                            if (j < userItinerary.length) {
+                                driver.marker.setLatLng(userItinerary[j]);
+                                j++;
+                            }
+                        }, 500);
+                    }
+                    if (userItinerary)
+                        if (driver.marker._latlng === userItinerary[userItinerary.length - 1]) {
+                            title.textContent = 'You have arrived'
+                            description.textContent = 'Thanks for using our service'
+                        }
+                })
+            })
+        }, 1000)
     })
 
     pickup.element.addEventListener('focus', () => {

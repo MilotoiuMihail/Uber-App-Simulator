@@ -37,7 +37,7 @@ body {
 
 .resultList {
     width: auto;
-    height: 60%;
+    height: 40%;
     overflow-y: scroll;
 }
 
@@ -96,6 +96,7 @@ body {
 
 .button:hover {
     background-color: #333333;
+    cursor: pointer;
 }
 
 #btnCancel {
@@ -105,4 +106,26 @@ body {
 
 #btnCancel:hover {
     background-color: #e2e2e2;
+}
+
+.address {
+    margin-bottom: 1px;
+    font-weight: 700;
+}
+
+.city {
+    font-size: 0.8em;
+    color: darkgrey;
+    font-weight: 300;
+
+}
+
+.selectedRide {
+    border: 2px solid darkgrey;
+    border-radius: 8px;
+}
+
+.car-name {
+    margin-right: 1em;
+    font-weight: 600;
 }
