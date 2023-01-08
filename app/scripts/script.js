@@ -1,27 +1,38 @@
 window.onload = function () {
-    let mapElement = document.getElementById('map')
-    let btnPosition = document.getElementById('btnPosition')
-    let btnSet = document.getElementById('btnSet')
-    let title = document.getElementById('title')
-    let pickupElement = document.getElementById('pickup')
-    let destinationElement = document.getElementById('destination')
-    let resultList = document.getElementById('results')
-    let buttonContainer = document.getElementById('buttonContainer')
-    let btnConfirm = document.getElementById('btnConfirm')
-    let btnCancel = document.getElementById('btnCancel')
-    let inputContainer = document.getElementById('inputContainer')
-    let currentSetMarker = null
-    let positionMarker = null
+    const mapElement = document.getElementById('map')
+    const btnPosition = document.getElementById('btnPosition')
+    const btnSet = document.getElementById('btnSet')
+    const title = document.getElementById('title')
+    const resultList = document.getElementById('results')
+    const buttonContainer = document.getElementById('buttonContainer')
+    const btnConfirm = document.getElementById('btnConfirm')
+    const btnCancel = document.getElementById('btnCancel')
+    const inputContainer = document.getElementById('inputContainer')
     let map = null
     let geocoder = null
-    let canSet = false
-    let currentPosition = null
-    let searchBounds = null
     let lastInput = null
-    let pickupMarker = null
-    let destinationMarker = null
-    let pickupSet = false
-    let destinationSet = false
+    let route = null
+
+    const pickup = {
+        element: document.getElementById('pickup'),
+        marker: null,
+        location: null
+    }
+
+    const destination = {
+        element: document.getElementById('destination'),
+        marker: null,
+        location: null
+    }
+
+    const setPoint = {
+        marker: null,
+        canSet: false
+    }
+
+    const user = {
+        marker: null
+    }
 
     //coordinates for Uber HQ
     const defaultLat = 37.7749
@@ -32,25 +43,24 @@ window.onload = function () {
     async function init() {
         initMap()
         geocoder = L.Control.Geocoder.nominatim()
-        let permissionStatus = await getPermission()
+        const permissionStatus = await getPermission()
         switch (permissionStatus.state) {
             case "granted":
-                navigator.geolocation.getCurrentPosition((position) => {
+                navigator.geolocation.getCurrentPosition(async (position) => {
                     onLocationAccess(position)
-                    if (btnPosition)
-                        geocoder.reverse(positionMarker._latlng, 10, result => {
-                            //schimba textul butonului de position cu numele locatiei 
-                            btnPosition.textContent = result[0].name
-                        })
+                    const result = await reverseSearch(user.marker._latlng)
+                    if (result)
+                        //schimba textul butonului de position cu numele locatiei 
+                        btnPosition.textContent = result.name
                 })
                 break;
             case "denied":
                 onLocationDenied()
             default:
-                setMapView(defaultLat, defaultLng, 13)
+                setMapView([defaultLat, defaultLng], 13)
                 break;
         }
-        pickupElement.focus()
+        pickup.element.focus()
     }
 
 
@@ -60,8 +70,8 @@ window.onload = function () {
 
     function initMap() {
         //map bounds to avoid gray margins
-        let verticalBound = mapElement.offsetHeight * .5;
-        let viewBounds = L.latLngBounds(L.latLng(-verticalBound, 300), L.latLng(verticalBound, -300));
+        const verticalBound = mapElement.offsetHeight * .5;
+        const viewBounds = L.latLngBounds(L.latLng(-verticalBound, 300), L.latLng(verticalBound, -300));
 
         map = L.map('map', {
             zoom: 13,
@@ -78,65 +88,85 @@ window.onload = function () {
         map.zoomControl.setPosition('bottomright')
     }
 
-    function setMapView(lat, lng, zoom) {
+    function setMapView(center, zoom) {
         if (!map)
             initMap()
-        map.setView([lat, lng], zoom)
+        map.setView(center, zoom)
     }
 
     function onLocationAccess(position) {
-        setPositionMarker(position)
-        let zoom = 17
-        setMapView(position.coords.latitude, position.coords.longitude, zoom)
-        let radius = 100000
-        setSearchBounds(position.coords.latitude, position.coords.longitude, radius)
+        const center = L.latLng(position.coords.latitude, position.coords.longitude)
+        setMarker(user, center)
+        const zoom = 17
+        setMapView(center, zoom)
+        const radius = 100000
+        setSearchBounds(center, radius)
     }
 
     function onLocationDenied() {
         btnPosition.remove()
     }
 
-    function setSearchBounds(lat, lng, radius) {
-        let center = L.latLng(lat, lng)
-        searchBounds = center.toBounds(radius)
+    function setSearchBounds(center, radius) {
+        const searchBounds = center.toBounds(radius)
         geocoder.options.geocodingQueryParams = {
             viewbox: searchBounds.toBBoxString(),
             bounded: 1
         }
     }
 
-    function setPositionMarker(position) {
-        if (positionMarker)
-            positionMarker.removeFrom(map)
-        positionMarker = L.marker([position.coords.latitude, position.coords.longitude]).addTo(map)
+    function setMarker(input, center) {
+        if (input.marker) {
+            input.marker.setLatLng(center)
+            if (!map.hasLayer(input.marker))
+                input.marker.addTo(map)
+        }
+        else
+            input.marker = L.marker(center).addTo(map)
+    }
+    function removeMarker(marker) {
+        if (marker)
+            marker.removeFrom(map)
+    }
+
+    function setLocation(input, location) {
+        input.element.value = location.name
+        input.location = location
+        setMarker(input, location.center)
+        isReady()
     }
 
     function createResult(result) {
-        let item = document.createElement("div")
+        const item = document.createElement("div")
         item.classList.add("resultItem");
         if (result.icon) {
-            let img = document.createElement("img");
+            const img = document.createElement("img");
             img.classList.add("icon");
             img.src = result.icon;
             item.appendChild(img);
         }
-        let text = document.createTextNode(result.name);
+        const text = document.createTextNode(result.name);
         item.appendChild(text);
         return item
     }
 
-    function isReady(input) {
-        if (input === pickupElement)
-            pickupSet = true
+    async function reverseSearch(center) {
+        return await new Promise(resolve => {
+            geocoder.reverse(center, 10, results => {
+                resolve(results[0])
+            })
+        })
+    }
+
+    function setRoute(waypoints) {
+        if (route) {
+            route.setWaypoints(waypoints)
+            if (!map.hasLayer(route))
+                route.addTo(map)
+        }
         else
-            destinationSet = true
-        if (pickupSet && destinationSet) {
-            resultList.innerHTML = 'Fotbal'
-            let route = L.Routing.control({
-                waypoints: [
-                    L.latLng(57.74, 11.94),
-                    L.latLng(57.6792, 11.949)
-                ],
+            route = L.Routing.control({
+                waypoints: waypoints,
                 draggableWaypoints: false,
                 routeWhileDragging: false,
                 addWaypoints: false,
@@ -145,26 +175,26 @@ window.onload = function () {
                     styles: [{ color: 'black' }]
                 }
             }).addTo(map)
+    }
+
+    function isReady() {
+        if (pickup.location && destination.location) {
+            //display ubers
+            resultList.innerHTML = 'Fotbal'
+            setRoute([pickup.location.center, destination.location.center])
         }
     }
 
-    const inputSearchHandler = (e) => {
+    const inputSearch = (input) => {
         resultList.innerHTML = ''
-        let input = e.target
-        geocoder.geocode(input.value, results => {
+        geocoder.geocode(input.element.value, results => {
             results.forEach(result => {
-                let item = createResult(result)
-                console.log(result)
-                item.addEventListener('click', (e) => {
-                    input.value = result.name
-                    input.blur()
+                const item = createResult(result)
+                item.addEventListener('click', () => {
+                    input.element.blur()
                     resultList.innerHTML = ''
-                    setMapView(result.center.lat, result.center.lng, 17)
-                    //depinde de lastInput
-                    if (pickupMarker)
-                        pickupMarker.removeFrom(map)
-                    pickupMarker = L.marker(result.center).addTo(map)
-                    isReady(input)
+                    setMapView(result.center, 17)
+                    setLocation(input, result)
                 })
                 resultList.appendChild(item)
             })
@@ -175,33 +205,29 @@ window.onload = function () {
     //code
     init()
 
-    map.addEventListener('click', (e) => {
-        if (!canSet) return
-        if (currentSetMarker)
-            currentSetMarker.removeFrom(map)
-        currentSetMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map)
-        console.log(map)
-        geocoder.reverse(currentSetMarker._latlng, 100, result => {
-            //schimba textul butonului de set cu numele locatiei 
-            btnSet.textContent = result[0].name
-        })
+    map.addEventListener('click', async (e) => {
+        if (!setPoint.canSet) return
+        setMarker(setPoint, [e.latlng.lat, e.latlng.lng])
+        const result = await reverseSearch(setPoint.marker._latlng)
+        //schimba textul butonului de set cu numele locatiei
+        if (!result) return
+        btnSet.textContent = result.name
     })
 
     btnPosition.addEventListener('click', () => {
-        navigator.geolocation.getCurrentPosition((position) => {
+        navigator.geolocation.getCurrentPosition(async (position) => {
             onLocationAccess(position)
-            if (btnPosition)
-                geocoder.reverse(positionMarker._latlng, 100, result => {
-                    //schimba textul butonului de position cu numele locatiei 
-                    btnPosition.textContent = result[0].name
-                    pickupElement.value = result[0].name
-                    isReady(lastInput)
-                })
+            const result = await reverseSearch(user.marker._latlng)
+            if (!result) return
+            setLocation(pickup, result)
+            removeMarker(pickup.marker)
+            //schimba textul butonului de position cu numele locatiei 
+            btnPosition.textContent = result.name
         })
     })
 
     btnSet.addEventListener('click', () => {
-        canSet = true
+        setPoint.canSet = true
         resultList.innerHTML = ''
         title.textContent = 'Choose your pickup location'
         buttonContainer.classList.remove('hidden')
@@ -210,56 +236,49 @@ window.onload = function () {
     })
 
     btnCancel.addEventListener('click', () => {
-        canSet = false
-        if (currentSetMarker)
-            currentSetMarker.removeFrom(map)
+        setPoint.canSet = false
+        removeMarker(setPoint.marker)
         buttonContainer.classList.add('hidden')
         inputContainer.classList.remove('hidden')
-        lastInput.focus()
+        lastInput.element.focus()
         //resetezi textul de pe butonul de set
         btnSet.textContent = 'Set location on map'
     })
 
-    btnConfirm.addEventListener('click', () => {
-        canSet = false
-        if (currentSetMarker)
-            currentSetMarker.removeFrom(map)
+    btnConfirm.addEventListener('click', async () => {
+        setPoint.canSet = false
+        removeMarker(setPoint.marker)
         buttonContainer.classList.add('hidden')
-        //iei valoarea din butonul de set
-        if (currentSetMarker)
-            geocoder.reverse(currentSetMarker._latlng, 100, result => {
-                //schimba textul butonului de set cu numele locatiei 
-                lastInput.value = result[0].name
-            })
-        //resetezi textul de pe butonul de set
+        if (setPoint.marker) {
+            const result = await reverseSearch(setPoint.marker._latlng)
+            if (result)
+                setLocation(lastInput, result)
+        }
         inputContainer.classList.remove('hidden')
         //resetezi textul de pe butonul de set
         btnSet.textContent = 'Set location on map'
-        isReady(lastInput)
     })
 
-    pickupElement.addEventListener('focus', (e) => {
-        lastInput = pickupElement
+    pickup.element.addEventListener('focus', () => {
+        lastInput = pickup
         btnPosition.classList.remove('hidden')
         title.textContent = 'Where can we pick you up?'
-        inputSearchHandler(e)
+        inputSearch(pickup)
     })
 
-    destinationElement.addEventListener('focus', (e) => {
-        lastInput = destinationElement
+    destination.element.addEventListener('focus', () => {
+        lastInput = destination
         btnPosition.classList.add('hidden')
         title.textContent = 'Where to?'
-        inputSearchHandler(e)
+        inputSearch(destination)
     })
 
-    pickupElement.addEventListener('keyup', (e) => {
-        pickupSet = false
-        inputSearchHandler(e)
+    pickup.element.addEventListener('keyup', () => {
+        inputSearch(pickup)
     })
 
-    destinationElement.addEventListener('keyup', (e) => {
-        destinationSet = false
-        inputSearchHandler(e)
+    destination.element.addEventListener('keyup', () => {
+        inputSearch(destination)
     })
 
 }
